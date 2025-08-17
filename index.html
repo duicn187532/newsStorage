@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上海商銀TimeLine</title>
+<link rel="stylesheet" href="https://cdn.knightlab.com/libs/timeline3/latest/css/timeline.css">
+<script src="https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js"></script>
+<style>
+/* ========= 全局 UI ========= */
+body {
+  margin: 0;
+  font-family: 'Microsoft JhengHei', sans-serif;
+  background: #f5f5f5;
+  color: #2D3748;
+}
+
+/* Header */
+.header {
+  background: #FF8C42;
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.header h1 { font-size: 1.8em; margin: 0; }
+.stats { display: flex; gap: 15px; flex-wrap: wrap; font-size: 0.9em; }
+
+/* Toolbar */
+.toolbar {
+  background: #fff;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-bottom: 2px solid #FF8C42;
+}
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 22px;
+  background: #FF8C42;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+  margin: 2px;
+}
+.btn:hover { background: #FFB366; }
+
+/* Timeline container */
+.timeline-container { height: calc(100vh - 160px); overflow: auto; }
+
+/* Timeline 覆蓋樣式 */
+.tl-text, .tl-text p, .tl-full-image-background .tl-text, .tl-full-color-background .tl-text, .tl-full-image-background .tl-text p, .tl-full-color-background .tl-text p {
+  color: #2D3748 !important;
+  text-shadow: none !important;
+}
+.tl-timeline { background: #FFF8F0 !important; }
+.tl-timemarker { background: #FFF8F0 !important; }
+.tl-timenav { background: rgba(255,248,240,0.95) !important; border-top: 2px solid #FF8C42 !important; }
+.tl-timenav-line { background: #FFB366 !important; }
+.tl-timenav-marker .tl-timenav-marker-content-container { background: #FF8C42 !important; border: 2px solid white !important; }
+
+/* Timeline 卡片 */
+.timeline-card {
+  background: #FFF8F0;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  color: #2D3748;
+}
+.timeline-card .sentiment-label {
+  font-weight: 600;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.9em;
+}
+.timeline-card .category-label {
+  font-weight: 500;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.85em;
+  background: #FFB366;
+}
+.timeline-card .content {
+  padding: 15px;
+  background: #FFF3E0;
+  border-radius: 8px;
+  border-left: 4px solid;
+  margin-bottom: 15px;
+  font-size: 1em;
+  color: #2D3748;
+  line-height: 1.7;
+}
+.timeline-card .info {
+  background: #FFF8F0;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  color: #555;
+  line-height: 1.5;
+}
+.timeline-card .keywords span {
+  background:#FFE0B2; 
+  color:#FF8C42; 
+  padding:4px 10px; 
+  border-radius:12px; 
+  font-size:0.85em; 
+  margin-right:6px; 
+  margin-bottom:6px; 
+  display:inline-block;
+}
+
+/* Loading / Error */
+.loading { text-align: center; padding: 40px; color: #555; }
+
+/* ========= RWD ========= */
+@media (max-width: 1024px) {
+  .header { flex-direction: column; gap: 10px; text-align: center; }
+  .toolbar { flex-direction: column; gap: 8px; }
+  .timeline-container { height: calc(100vh - 180px); }
+  .timeline-card { padding: 16px; }
+}
+@media (max-width: 768px) {
+  .btn { padding: 5px 10px; font-size: 0.85em; }
+  .timeline-card .content { font-size: 0.95em; }
+  .timeline-card .info { font-size: 0.85em; }
+}
+@media (max-width: 480px) {
+  .timeline-card { padding: 12px; margin-bottom: 15px; }
+  .timeline-card .content { font-size: 0.9em; }
+  .timeline-card .info { font-size: 0.8em; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>上海商銀TimeLine</h1>
+  <div class="stats" id="stats" style="display: none;">
+    <span>總計 <strong id="totalCount">0</strong> 篇新聞</span>
+    <span>平均情感 <strong id="avgSentiment">0</strong></span>
+    <span>第 <strong id="currentPage">1</strong> 頁 / 共 <strong id="totalPages">1</strong> 頁</span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="page-controls" id="pageControls" style="display: none;">
+    <button class="btn" onclick="prevPage()" id="prevBtn" disabled>上一頁</button>
+    <span id="pageInfo">第 1 頁</span>
+    <button class="btn" onclick="nextPage()" id="nextBtn" disabled>下一頁</button>
+    <select class="btn" onchange="changePageSize()" id="pageSize">
+      <option value="50" selected>每頁 50 筆</option>
+      <option value="100">每頁 100 筆</option>
+      <option value="200">每頁 200 筆</option>
+    </select>
+  </div>
+</div>
+
+<div class="timeline-container">
+  <div id="timeline-embed">
+    <div class="loading">
+      <div style="font-size: 3em; margin-bottom: 20px;">📊</div>
+      <h3>新聞情感時間軸</h3>
+      <p>正在載入新聞資料...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let timeline, originalData = null, currentPage = 1, pageSize = 50, totalPages = 1;
+const timelineOptions = { initial_zoom: 2, start_at_end: false, timenav_height: 120, language: 'zh-tw' };
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const dataUrl = 'timeline_data.json';
+  showLoading('正在載入新聞資料...');
+  try {
+    const res = await fetch(dataUrl);
+    if (!res.ok) throw new Error('無法取得 JSON 檔案');
+    const json = await res.json();
+    if (!json.events || !Array.isArray(json.events)) throw new Error('JSON 格式錯誤：需要包含 events 陣列');
+    originalData = preprocessData(json.events);
+    totalPages = Math.ceil(originalData.length / pageSize);
+    updateUI();
+    await loadPage(1);
+  } catch (err) { showError('讀取資料失敗: ' + err.message); }
+});
+
+function preprocessData(events) {
+  return events.map((event, i) => {
+    const startDate = event.start_date;
+    const date = new Date(startDate.year, (startDate.month || 1) - 1, startDate.day || 1);
+    const textContent = event.text.text || '';
+    let titleSentiment = 0, contentSentiment = 0;
+    const sentimentMatch = textContent.match(/標題情感:<\/b>\s*([-\d.]+)\s*\|\s*<b>內文情感:<\/b>\s*([-\d.]+)/);
+    if (sentimentMatch) { titleSentiment = parseFloat(sentimentMatch[1]); contentSentiment = parseFloat(sentimentMatch[2]); }
+    const categoryMatch = textContent.match(/<b>分類:<\/b>\s*([^<]+)/);
+    const keywordsMatch = textContent.match(/<b>關鍵詞:<\/b>\s*([^<]+)/);
+    const content = textContent.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return { ...event, date, content, title_sentiment: titleSentiment, content_sentiment: contentSentiment,
+      sentiment: contentSentiment !== 0 ? contentSentiment : titleSentiment,
+      category: categoryMatch ? categoryMatch[1].trim() : '',
+      keywords: keywordsMatch ? keywordsMatch[1].trim() : '', index: i
+    };
+  }).sort((a,b)=>a.date-b.date);
+}
+
+async function loadPage(page) {
+  showLoading(`載入第 ${page} 頁...`);
+  const start = (page-1)*pageSize;
+  const end = Math.min(start+pageSize, originalData.length);
+  const pageData = originalData.slice(start,end);
+  const timelineData = convertToTimeline(pageData);
+  document.getElementById('timeline-embed').innerHTML = '';
+  timeline = new TL.Timeline('timeline-embed', timelineData, timelineOptions);
+  currentPage = page; updatePageControls();
+}
+
+function convertToTimeline(data) {
+  const events = data.map(item => {
+    const color = item.sentiment>0.3 ? '#4CAF50':item.sentiment<-0.3?'#F44336':'#FF9800';
+    return { start_date:item.start_date, text:{ headline:item.text.headline, text:createContent(item) }, background:{ color } };
+  });
+  return { title:{ text:{ headline:"📰 上海商銀TimeLine"} }, events };
+}
+
+function createContent(item) {
+  const sentiment = item.sentiment||0;
+  const sentimentColor = sentiment>0.3?'#4CAF50':sentiment<-0.3?'#F44336':'#FF9800';
+  const sentimentText = sentiment>0.3?'正面':sentiment<-0.3?'負面':'中性';
+  return `<div class="timeline-card">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+      <span class="sentiment-label" style="background:${sentimentColor}">${sentimentText} ${sentiment.toFixed(2)}</span>
+      ${item.category?`<span class="category-label">${item.category}</span>`:''}
+    </div>
+    <div class="content" style="border-left-color:${sentimentColor}">${item.content}</div>
+    <div class="info">
+      <div><strong>發布日期：</strong>${item.date.toLocaleDateString('zh-TW')}</div>
+      <div><strong>情感分析：</strong> 標題 ${item.title_sentiment.toFixed(2)} | 內文 ${item.content_sentiment.toFixed(2)}</div>
+      ${item.keywords?`<div class="keywords">${item.keywords.split(/[;,]/).map(k=>`<span>${k.trim()}</span>`).join('')}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function updateUI() {
+  const stats = document.getElementById('stats');
+  const total = originalData.length;
+  const avg = (originalData.reduce((sum,item)=>sum+item.sentiment,0)/total).toFixed(2);
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('avgSentiment').textContent = avg;
+  stats.style.display='flex';
+  if(total>pageSize) document.getElementById('pageControls').style.display='flex';
+}
+
+function updatePageControls() {
+  document.getElementById('currentPage').textContent=currentPage;
+  document.getElementById('totalPages').textContent=totalPages;
+  document.getElementById('pageInfo').textContent=`第 ${currentPage} 頁`;
+  document.getElementById('prevBtn').disabled=currentPage<=1;
+  document.getElementById('nextBtn').disabled=currentPage>=totalPages;
+}
+
+function goToStart(){ if(timeline?.goTo) timeline.goTo(0); }
+async function prevPage(){ if(currentPage>1) await loadPage(currentPage-1); }
+async function nextPage(){ if(currentPage<totalPages) await loadPage(currentPage+1); }
+async function changePageSize(){ pageSize=parseInt(document.getElementById('pageSize').value); if(originalData){totalPages=Math.ceil(originalData.length/pageSize); await loadPage(1);} }
+function toggleFullscreen(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+function showLoading(msg){ document.getElementById('timeline-embed').innerHTML=`<div class="loading"><div class="spinner"></div><p style="font-size: 1.1em; font-weight: 500;">${msg}</p></div>`; }
+function showError(msg){ document.getElementById('timeline-embed').innerHTML=`<div class="loading"><div style="font-size: 3em; color: #F44336; margin-bottom: 15px;">❌</div><p style="color: #F44336; font-weight: 600; font-size: 1.1em;">${msg}</p><p style="color: #666; margin-top: 10px;">請檢查檔案格式後重新載入</p></div>`; }
+
+let resizeTimer;
+window.addEventListener('resize',()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(()=>{ if(timeline?.updateDisplay) timeline.updateDisplay(); },250); });
+</script>
+</body>
+</html>

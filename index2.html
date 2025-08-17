@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上海商銀媒體資料庫</title>
+<style>
+  * { box-sizing: border-box; }
+  body { 
+    font-family: 'Microsoft JhengHei', 'Segoe UI', Arial, sans-serif; 
+    margin: 0; padding: 5px; background-color: #fff8f0; color: #333;
+  }
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #ffa500 0%, #ff7f50 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+  }
+  .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
+  .filters {
+    background: #fccb80;
+    padding: 8px;
+    color: white;
+  }
+  
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .filter-select, .search-input {
+    padding: 6px;
+    border-radius: 6px;
+    border: none;
+  }
+  
+  .btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background: #ff9900;
+    color: white;
+  }
+  
+  .btn-secondary {
+    background: #555;
+    color: white;
+  }
+  
+  .toggle-filters {
+    display: none;
+    background: #ff9900;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+  
+  /* RWD: 窄螢幕時收起 filter-content */
+  @media screen and (max-width: 768px) {
+    .filter-content {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toggle-filters {
+      display: block;
+    }
+  }
+  
+  .btn-primary { background: #ff9900; color: white; }
+  .btn-primary:hover { background: #ff8800; transform: translateY(-1px); }
+  .btn-secondary { background: #ffb84d; color: white; }
+  .btn-secondary:hover { background: #ffaa33; transform: translateY(-1px); }
+  .results-info { padding: 15px 25px; background: #fff0d9; border-left: 4px solid #ff9900; margin: 0; font-weight: 500; }
+  .table-container { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #fff2e6; padding: 15px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #ffd699; cursor: pointer; position: sticky; top: 0; z-index: 10; }
+  th:hover { background: #ffe6cc; }
+  th.sortable:after { content: ' ↕'; opacity: 0.5; }
+  th.sort-asc:after { content: ' ↑'; opacity: 1; }
+  th.sort-desc:after { content: ' ↓'; opacity: 1; }
+  td { padding: 12px; border-bottom: 1px solid #ffe0b3; vertical-align: top; }
+  tr:hover { background-color: #fff2e6; }
+  .title-cell { font-weight: 500; max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+  .sentiment-positive { color: #ff6600; font-weight: 500; }
+  .sentiment-negative { color: #cc3300; font-weight: 500; }
+  .sentiment-neutral { color: #996633; font-weight: 500; }
+  .topic-tag { background: #ff9900; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; display: inline-block; }
+  .stats { margin: 25px; padding: 20px; background: #fff4e6; border-radius: 8px; }
+  .stats h3 { margin-top: 0; color: #994d00; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+  .reporter-card { background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9900; }
+  .reporter-name { font-weight: 600; margin-bottom: 8px; }
+  .reporter-stats { font-size: 13px; color: #6c757d; }
+  .no-data, .loading { text-align: center; padding: 40px; color: #996633; font-size: 16px; }
+  @media (max-width: 768px) {
+    .filter-row { flex-direction: column; align-items: stretch; }
+    .search-container { min-width: auto; }
+    .header h1 { font-size: 2em; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📰 上海商銀媒體資料庫</h1>
+    <p>智慧搜尋與分析平台</p>
+  </div>
+
+  <div class="filters">
+    <button class="toggle-filters" onclick="toggleFilters()">☰ 篩選工具</button>
+    
+    <div class="filter-content">
+      <div class="filter-row">
+        <div class="search-container">
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input"
+            placeholder="🔍 搜尋標題、內文、關鍵字..."
+          >
+        </div>
+        <select id="topicFilter" class="filter-select">
+          <option value="">全部主題</option>
+        </select>
+        <select id="mediaFilter" class="filter-select">
+          <option value="">全部媒體</option>
+        </select>
+        <select id="reporterFilter" class="filter-select">
+          <option value="">全部記者</option>
+        </select>
+      </div>
+      
+      <div class="filter-row">
+        <button onclick="applyFilters()" class="btn btn-primary">🔍 搜尋</button>
+        <button onclick="clearFilters()" class="btn btn-secondary">🗑️ 清除</button>
+        <button onclick="exportData()" class="btn btn-secondary">📊 匯出</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="resultsInfo" class="results-info"></div>
+
+  <div class="table-container">
+    <table id="newsTable">
+      <thead>
+        <tr>
+          <th class="sortable" onclick="sortTable('date')">日期</th>
+          <th class="sortable" onclick="sortTable('title')">標題</th>
+          <th class="sortable" onclick="sortTable('reporter')">記者</th>
+          <th class="sortable" onclick="sortTable('media')">媒體</th>
+          <th class="sortable" onclick="sortTable('title_sentiment')">標題情感</th>
+          <th class="sortable" onclick="sortTable('content_sentiment')">內文情感</th>
+          <th class="sortable" onclick="sortTable('topic')">主題</th>
+          <th class="sortable" onclick="sortTable('keywords')">關鍵字</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="stats" id="reporterStats"></div>
+</div>
+
+<script>
+let newsData = [];
+let filteredData = [];
+let currentSort = { field: 'date', direction: 'desc' };
+
+document.addEventListener('DOMContentLoaded', function() {
+  showLoading();
+  setupEventListeners();
+  loadNews(); // 自動讀取 data/news.json
+});
+
+function setupEventListeners() {
+  document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+  ['topicFilter', 'mediaFilter', 'reporterFilter'].forEach(id => {
+    document.getElementById(id).addEventListener('change', applyFilters);
+  });
+}
+
+async function loadNews() {
+  try {
+    const res = await fetch('news.json');
+    newsData = await res.json();
+    populateFilters();
+    applyFilters();
+  } catch (err) {
+    alert('無法讀取 news.json，請確認檔案位置正確');
+    console.error(err);
+  }
+}
+
+function populateFilters() {
+  const topics = [...new Set(newsData.map(n => n.topic))].sort();
+  const medias = [...new Set(newsData.map(n => n.media))].sort();
+  const reporters = [...new Set(newsData.map(n => n.reporter))].sort();
+
+  populateSelect('topicFilter', topics);
+  populateSelect('mediaFilter', medias);
+  populateSelect('reporterFilter', reporters);
+}
+
+function populateSelect(selectId, options) {
+  const select = document.getElementById(selectId);
+  const currentValue = select.value;
+  select.innerHTML = select.children[0].outerHTML;
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+  select.value = currentValue;
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const topic = document.getElementById('topicFilter').value;
+  const media = document.getElementById('mediaFilter').value;
+  const reporter = document.getElementById('reporterFilter').value;
+
+  filteredData = newsData.filter(n => {
+    const matchesSearch = !search || n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search) || n.reporter.toLowerCase().includes(search) || n.media.toLowerCase().includes(search) || (n.keywords && n.keywords.toLowerCase().includes(search));
+    const matchesTopic = !topic || n.topic === topic;
+    const matchesMedia = !media || n.media === media;
+    const matchesReporter = !reporter || n.reporter === reporter;
+    return matchesSearch && matchesTopic && matchesMedia && matchesReporter;
+  });
+
+  sortFiltered(currentSort.field, currentSort.direction);
+  renderTable();
+  renderStats();
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  ['topicFilter', 'mediaFilter', 'reporterFilter'].forEach(id => document.getElementById(id).value = '');
+  applyFilters();
+}
+
+function renderTable() {
+  const tbody = document.querySelector('#newsTable tbody');
+  tbody.innerHTML = '';
+
+  if (!filteredData.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="no-data">沒有符合條件的資料</td></tr>`;
+    document.getElementById('resultsInfo').textContent = '';
+    return;
+  }
+
+  filteredData.forEach(n => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+    <td>${n.date}</td>
+    <td class="title-cell" title="${n.title}">${n.title}</td>
+    <td>${n.reporter}</td>
+    <td>${n.media}</td>
+    <td class="${sentimentClass(n.title_sentiment)}">${n.title_sentiment}</td>
+    <td class="${sentimentClass(n.content_sentiment)}">${n.content_sentiment}</td>
+    <td><span class="topic-tag">${n.topic}</span></td>
+    <td>
+      ${n.keywords ? n.keywords.split(';').slice(0,5).map(k => `<span class="topic-tag">${k.trim()}</span>`).join(' ') : ''}
+    </td>
+  `;
+      tbody.appendChild(tr);
+  });
+
+  document.getElementById('resultsInfo').textContent = `共 ${filteredData.length} 筆結果`;
+}
+
+function sentimentClass(value) {
+  if (value === 'positive') return 'sentiment-positive';
+  if (value === 'negative') return 'sentiment-negative';
+  return 'sentiment-neutral';
+}
+
+function sortTable(field) {
+  let direction = 'asc';
+  if (currentSort.field === field && currentSort.direction === 'asc') direction = 'desc';
+  currentSort = { field, direction };
+  sortFiltered(field, direction);
+  renderTable();
+}
+
+function sortFiltered(field, direction) {
+  filteredData.sort((a,b) => {
+    let valA = a[field], valB = b[field];
+    if (field === 'date') { valA = new Date(valA); valB = new Date(valB); }
+    if (valA < valB) return direction === 'asc' ? -1 : 1;
+    if (valA > valB) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function renderStats() {
+  const statsEl = document.getElementById('reporterStats');
+  const reporters = {};
+  filteredData.forEach(n => {
+    if (!reporters[n.reporter]) reporters[n.reporter] = 0;
+    reporters[n.reporter]++;
+  });
+
+  statsEl.innerHTML = '<h3>記者統計</h3><div class="stats-grid">' +
+    Object.entries(reporters).map(([r,c]) => `<div class="reporter-card"><div class="reporter-name">${r}</div><div class="reporter-stats">報導數：${c}</div></div>`).join('') +
+    '</div>';
+}
+function toggleFilters() {
+    const content = document.querySelector('.filter-content');
+    if (content.style.display === 'flex') {
+      content.style.display = 'none';
+    } else {
+      content.style.display = 'flex';
+    }
+  }
+  
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+function showLoading() {
+  const tbody = document.querySelector('#newsTable tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="loading">載入中...</td></tr>';
+  document.getElementById('resultsInfo').textContent = '';
+}
+
+function exportData() {
+  const csvContent = [
+    ['日期','標題','記者','媒體','標題情感','內文情感','主題','關鍵字數'],
+    ...filteredData.map(n => [n.date,n.title,n.reporter,n.media,n.title_sentiment,n.content_sentiment,n.topic,n.keywords_count || 0])
+  ].map(e => e.map(v => `"${v}"`).join(',')).join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `news_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
