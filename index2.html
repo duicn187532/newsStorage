@@ -213,8 +213,11 @@ function applyFilters() {
   const reporter = document.getElementById('reporterFilter').value;
 
   filteredData = newsData.filter(n => {
-    const matchesSearch = !search || n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search) || (n.keywords && n.keywords.toLowerCase().includes(search));
-    const matchesTopic = !topic || n.topic === topic;
+    const matchesSearch = !search 
+    || (n.title && n.title.toLowerCase().includes(search)) 
+    || (n.content && n.content.toLowerCase().includes(search)) 
+    || (n.keywords && n.keywords.toLowerCase().includes(search));
+      const matchesTopic = !topic || n.topic === topic;
     const matchesMedia = !media || n.media === media;
     const matchesReporter = !reporter || n.reporter === reporter;
     return matchesSearch && matchesTopic && matchesMedia && matchesReporter;
